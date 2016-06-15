@@ -1,5 +1,6 @@
 package com.example.nikunjjain.sunshine;
 
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -73,26 +74,42 @@ public class ForecastFragment extends Fragment {
         int id = item.getItemId();
         if (id == R.id.action_refresh) {
             FetchWeatherTask fetchWeatherTask = new FetchWeatherTask();
-            fetchWeatherTask.execute();
+            fetchWeatherTask.execute("110062");
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    public class FetchWeatherTask extends AsyncTask<Void, Void, Void> {
+    public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
 
         @Override
-        protected Void doInBackground(Void... params) {
+        protected Void doInBackground(String... params) {
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
-
             String forecastJsonStr = null;
 
+            if (params.length == 0) {
+                return null;
+            }
             try {
-                // Construct the URL for the OpenWeatherMap query
-                // Possible parameters are available at OWM's forecast API page, at
-                // http://openweathermap.org/API#forecast
-                URL url = new URL("http://api.openweathermap.org/data/2.5/forecast/daily?q=94043&mode=json&units=metric&cnt=7");
+
+                final String API_KEY = "b3bd28aa4074843c07857524c160d234";
+
+                Uri.Builder builder = new Uri.Builder();
+                builder.scheme("http")
+                        .authority("api.openweathermap.org")
+                        .appendPath("data")
+                        .appendPath("2.5")
+                        .appendPath("forecast")
+                        .appendPath("daily")
+                        .appendQueryParameter("appid", API_KEY)
+                        .appendQueryParameter("q", params[0])
+                        .appendQueryParameter("mode", "json")
+                        .appendQueryParameter("units", "metrical")
+                        .appendQueryParameter("cnt", "10");
+
+                URL url = new URL(builder.build().toString());
+                Log.d("Nikunj", "" + url);
 
                 // Create the request to OpenWeatherMap, and open the connection
                 urlConnection = (HttpURLConnection) url.openConnection();
