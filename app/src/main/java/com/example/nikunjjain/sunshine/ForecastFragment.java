@@ -5,6 +5,7 @@ import android.os.AsyncTask;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
+import android.text.format.Time;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -15,19 +16,24 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-/**
- * A placeholder fragment containing a simple view.
- */
+
 public class ForecastFragment extends Fragment {
+
+    private ArrayAdapter<String> mAdapter;
 
     public ForecastFragment() {
     }
@@ -55,11 +61,11 @@ public class ForecastFragment extends Fragment {
         };
 
         ArrayList<String> forecast = new ArrayList<>(Arrays.asList(data));
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(), R.layout.list_item_forecast, R.id.list_item_forecast_textview, forecast);
+        mAdapter = new ArrayAdapter<>(getActivity(), R.layout.list_item_forecast, R.id.list_item_forecast_textview, forecast);
 
         ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
 
-        listView.setAdapter(adapter);
+        listView.setAdapter(mAdapter);
 
         return rootView;
     }
@@ -74,16 +80,66 @@ public class ForecastFragment extends Fragment {
         int id = item.getItemId();
         if (id == R.id.action_refresh) {
             FetchWeatherTask fetchWeatherTask = new FetchWeatherTask();
-            fetchWeatherTask.execute("110062");
+            fetchWeatherTask.execute("110062,IND");
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
+    public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
+
+        private String getReadableDateString(long time) {
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEE MMM dd");
+            return simpleDateFormat.format(time);
+        }
+
+        private String formatHighLows(double high, double low) {
+            long roundedHigh = Math.round(high);
+            long roundedLow = Math.round(low);
+
+            String highLowStr = roundedHigh + "/" + roundedLow;
+            return highLowStr;
+        }
+
+        private String[] getWeatherDataFromJson(String forecastJsonStr, int numDays) throws JSONException {
+            final String KEY_LIST = "list";
+            final String KEY_WEATHER = "weather";
+            final String KEY_TEMPERATURE = "temp";
+            final String KEY_MAX = "max";
+            final String KEY_MIN = "min";
+            final String KEY_MAIN_DESCRIPTION = "main";
+
+            JSONObject forecastJson = new JSONObject(forecastJsonStr);
+            JSONArray weatherArray = forecastJson.getJSONArray(KEY_LIST);
+
+            Time dayTime = new Time();
+            dayTime.setToNow();
+
+            int julianStartDay = Time.getJulianDay(System.currentTimeMillis(), dayTime.gmtoff);
+
+            dayTime = new Time();
+            String resultStrs[] = new String[numDays];
+            for (int i = 0; i < weatherArray.length(); i++) {
+                String day, description, highAndLow;
+
+                JSONObject dayForecast = weatherArray.getJSONObject(i);
+
+                long dateTime = dayTime.setJulianDay(julianStartDay + i);
+                day = getReadableDateString(dateTime);
+
+                JSONObject weatherObject = dayForecast.getJSONArray(KEY_WEATHER).getJSONObject(0);
+                description = weatherObject.getString(KEY_MAIN_DESCRIPTION);
+
+                JSONObject temperatureObject = dayForecast.getJSONObject(KEY_TEMPERATURE);
+
+                highAndLow = formatHighLows(temperatureObject.getDouble(KEY_MAX), temperatureObject.getDouble(KEY_MIN));
+                resultStrs[i] = day + " - " + description + " - " + highAndLow;
+            }
+            return resultStrs;
+        }
 
         @Override
-        protected Void doInBackground(String... params) {
+        protected String[] doInBackground(String... params) {
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
             String forecastJsonStr = null;
@@ -105,13 +161,11 @@ public class ForecastFragment extends Fragment {
                         .appendQueryParameter("appid", API_KEY)
                         .appendQueryParameter("q", params[0])
                         .appendQueryParameter("mode", "json")
-                        .appendQueryParameter("units", "metrical")
+                        .appendQueryParameter("units", "metric")
                         .appendQueryParameter("cnt", "10");
 
                 URL url = new URL(builder.build().toString());
-                Log.d("Nikunj", "" + url);
 
-                // Create the request to OpenWeatherMap, and open the connection
                 urlConnection = (HttpURLConnection) url.openConnection();
                 urlConnection.setRequestMethod("GET");
                 urlConnection.connect();
@@ -154,8 +208,22 @@ public class ForecastFragment extends Fragment {
                         Log.e("PlaceholderFragment", "Error closing stream", e);
                     }
                 }
+                try {
+                    return getWeatherDataFromJson(forecastJsonStr, 10);
+                } catch (JSONException e) {
+                    Log.e("Nikunj", e.getMessage(), e);
+                    e.printStackTrace();
+                }
             }
             return null;
+        }
+
+        @Override
+        protected void onPostExecute(String[] strings) {
+            if (strings != null) {
+                mAdapter.clear();
+                mAdapter.addAll(strings);
+            }
         }
     }
 }
