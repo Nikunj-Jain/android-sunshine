@@ -101,7 +101,13 @@ public class ForecastFragment extends Fragment {
             return simpleDateFormat.format(time);
         }
 
-        private String formatHighLows(double high, double low) {
+        private String formatHighLows(double high, double low, String unitType) {
+
+            if (unitType.equals(getString(R.string.pref_temperature_imperial))) {
+                high = (high * 1.8) + 32;
+                low = (low * 1.8) + 32;
+            }
+
             long roundedHigh = Math.round(high);
             long roundedLow = Math.round(low);
 
@@ -130,6 +136,9 @@ public class ForecastFragment extends Fragment {
             for (int i = 0; i < weatherArray.length(); i++) {
                 String day, description, highAndLow;
 
+                SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+                String unitType = sharedPreferences.getString(getString(R.string.pref_temperature_key), getString(R.string.pref_temperature_default));
+
                 JSONObject dayForecast = weatherArray.getJSONObject(i);
 
                 long dateTime = dayTime.setJulianDay(julianStartDay + i);
@@ -140,7 +149,7 @@ public class ForecastFragment extends Fragment {
 
                 JSONObject temperatureObject = dayForecast.getJSONObject(KEY_TEMPERATURE);
 
-                highAndLow = formatHighLows(temperatureObject.getDouble(KEY_MAX), temperatureObject.getDouble(KEY_MIN));
+                highAndLow = formatHighLows(temperatureObject.getDouble(KEY_MAX), temperatureObject.getDouble(KEY_MIN), unitType);
                 resultStrs[i] = day + " - " + description + " - " + highAndLow;
             }
             return resultStrs;
@@ -202,10 +211,8 @@ public class ForecastFragment extends Fragment {
                 forecastJsonStr = buffer.toString();
             } catch (IOException e) {
                 Log.e("PlaceholderFragment", "Error ", e);
-                // If the code didn't successfully get the weather data, there's no point in attempting
-                // to parse it.
                 forecastJsonStr = null;
-            } finally{
+            } finally {
                 if (urlConnection != null) {
                     urlConnection.disconnect();
                 }

@@ -1,9 +1,22 @@
 <resources>
     <string name="app_name">Sunshine</string>
+
     <string name="action_refresh" translatable="false">Refresh</string>
+    <string name="action_share">Share</string>
+
     <string name="title_activity_settings">Settings</string>
     <string name="title_activity_detail">Details</string>
+
+
     <string name="pref_location_key" translatable="false">location</string>
     <string name="pref_location_label">Location</string>
     <string name="pref_location_default" translatable="false">110062,IND</string>
+
+
+    <string name="pref_temperature_key" translatable="false">temperature</string>
+    <string name="pref_temperature_label">Temperature Units</string>
+    <string name="pref_temperature_default" translatable="false">Metric</string>
+    <string name="pref_temperature_metric">Metric</string>
+    <string name="pref_temperature_imperial">Imperial</string>
+
 </resources>
